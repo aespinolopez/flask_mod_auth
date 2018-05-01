@@ -1,8 +1,11 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, abort
 from flask.views import MethodView
 from app.utils.flask_utils import register_api
-from .exceptions import ApiQueryError
-from .models import UsersModel, User, query_to_json
+from .exceptions import ApiQueryError, ValidationError
+from .models import UsersModel, User, query_to_json, ph
+from .validations import is_valid_email
+from argon2.exceptions import VerificationError
+from mongoengine.errors import NotUniqueError
 
 
 mod_auth = Blueprint('auth', __name__, url_prefix='/')
@@ -14,7 +17,10 @@ _PAGINATE_ACTION = 'page'
 
 
 # todo set pagination
-# todo test api
+# todo control possible exceptions and implement error handlers
+# todo reset password and forgot password system
+# todo internationzalization
+# todo comment code
 
 
 class UsersApi(MethodView):
@@ -39,24 +45,33 @@ class UsersApi(MethodView):
 
     def post(self):
         json = request.get_json()
-        # todo validate content
-        user = User.from_json(json)
-        model = UsersModel.persist(user)
-        return jsonify(model.to_json())
+        try:
+            user = User.from_json(json)
+            model = UsersModel.persist(user)
+        except NotUniqueError:
+            abort(409)
+        except ValidationError as err:
+            abort(400, err.message)
+
+        else:
+            return jsonify(model.to_json()), 201
 
     def put(self, user_id):
         json = request.get_json()
         user = UsersModel.get_user(user_id)
-        user.username = json['username']
-        user.email = json['email']
-        user.password = json['password']
-        UsersModel.from_user(user).persist()
-        return user.to_json()
+        try:
+            user.username = json['username']
+            user.email = json['email']
+        except ValidationError as err:
+            abort(400, err.message)
+
+        UsersModel.persist(user)
+        return jsonify(user.to_json())
 
     def delete(self, user_id):
-        model = UsersModel.get_model(user_id).delete()
+        model = UsersModel.get_model(user_id)
         model.remove()
-        return User.from_model(model).to_json()
+        return jsonify(User.from_model(model).to_json())
 
     @staticmethod
     def __process_get_arguments():
@@ -67,6 +82,7 @@ class UsersApi(MethodView):
             elif key.lower() == _SEARCH_ACTION:
                 arguments[_SEARCH_ACTION] = value
             elif key.lower == _PAGINATE_ACTION:
+                # todo implement
                 pass
             else:
                 if _FILTER_ACTION not in arguments:
@@ -77,6 +93,22 @@ class UsersApi(MethodView):
             raise ApiQueryError('cannot filter and search results in the same request')
 
         return arguments
+
+
+@mod_auth.route('/authenticate', methods=['POST'])
+def authenticate():
+    json = request.get_json()
+    if is_valid_email(json['identifier']):
+        user = UsersModel.filter_users(email=json['identifier']).first()
+    else:
+        user = UsersModel.filter_users(username=json['identifier']).first()
+    if not user:
+        abort(404, 'user not found')
+    try:
+        ph.verify(user.password, json['password'])
+    except VerificationError:
+        abort(401, 'passwords doesn\'t match')
+    return '', 204
 
 
 register_api(mod_auth, UsersApi, 'users_api', '/users/', 'user_id', 'string')

@@ -38,12 +38,12 @@ class UsersModel(db.Document):
 
     @staticmethod
     def filter_users(**kwargs):
-        query = UsersModel.objects(**kwargs)
+        query = UsersModel.objects(**kwargs, deleted_at=None)
         return query
 
     @staticmethod
     def search_users(username):
-        query = UsersModel.objects(username__icontains=username)
+        query = UsersModel.objects(username__icontains=username, deleted_at=None)
         return query
 
     @staticmethod
@@ -58,17 +58,16 @@ class UsersModel(db.Document):
 
     @staticmethod
     def from_user(user):
-        if user.id == 0:
+        if user.user_id == 0:
             user_model = UsersModel(
                 username=user.username,
                 email=user.email,
                 password=user.password
             )
         else:
-            user_model = UsersModel.get_user(user.id)
+            user_model = UsersModel.get_model(user.user_id)
             user_model.username = user.username
             user_model.email = user.email
-            user_model.password = user.password
             user_model.updated_at = datetime.utcnow()
 
         return user_model
@@ -96,13 +95,16 @@ class User:
 
     @staticmethod
     def from_model(model):
-        return User(model.username, model.email, model.password, model.id)
+        user = User(model.username, model.email, user_id=model.id)
+        user._password = model.password
+        return user
 
-    def __init__(self, username, email, password, user_id=0):
-        self._user_id = user_id
+    def __init__(self, username, email, password=None, user_id=0):
+        self.user_id = user_id
         self.username = username
         self.email = email
-        self.password = password
+        if password:
+            self.password = password
 
     @property
     def password(self):
@@ -141,7 +143,7 @@ class User:
 
     def to_json(self):
         return {
-            'id': str(self._user_id),
+            'id': str(self.user_id),
             'username': self.username,
             'email': self.email
         }
@@ -149,7 +151,8 @@ class User:
 
 def query_to_json(query):
     users = []
-    for user in query:
+    for user_model in query:
+        user = User.from_model(user_model)
         users.append(user.to_json())
 
     return users
@@ -160,7 +163,7 @@ def _validate_username(username):
     errors = []
     if not is_valid_username(username):
         errors.append('should contain only letters, digits, underscore and hyphens')
-    if check_length(username, length_range[0], length_range[1]):
+    if not check_length(username, length_range[0], length_range[1]):
         errors.append('should has at least {} characters and a maximum of {}'.format(length_range[0], length_range[1]))
 
     return errors
@@ -177,7 +180,7 @@ def _validate_password(password):
         errors.append('should contain at least a lowercase letter')
     if not has_special_char(password):
         errors.append('should contain at least a special character')
-    if check_length(password, length_range[0], length_range[1]):
+    if not check_length(password, length_range[0], length_range[1]):
         errors.append('length should be between {} and {}'.format(length_range[0], length_range[1]))
 
     return errors
