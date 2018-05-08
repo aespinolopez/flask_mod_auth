@@ -14,6 +14,8 @@ from .validations import (
 
 ph = PasswordHasher()
 
+# todo make a wrapper for UsersModel -> UsersDao
+
 
 class UsersModel(db.Document):
     username = db.StringField(required=True, unique=True)
@@ -49,6 +51,12 @@ class UsersModel(db.Document):
     @staticmethod
     def sorted_by(field, query):
         return query.order_by(field)
+
+    @staticmethod  # todo transform into utility method
+    def paginate(query, page, elements_per_page=10):
+        start = (page - 1) * elements_per_page
+        end = start + elements_per_page
+        return query[start:end]
 
     @staticmethod
     def persist(user):

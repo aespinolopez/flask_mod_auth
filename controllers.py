@@ -17,7 +17,7 @@ _PAGINATE_ACTION = 'page'
 
 
 # todo set pagination
-# todo control possible exceptions and implement error handlers
+# todo implement error handlers and control possible filter_users exception when key not found
 # todo reset password and forgot password system
 # todo internationzalization
 # todo comment code
@@ -40,6 +40,8 @@ class UsersApi(MethodView):
                 query = UsersModel.list_users()
             if _SORT_ACTION in arguments:
                 query = UsersModel.sorted_by(arguments[_SORT_ACTION], query)
+            if _PAGINATE_ACTION in arguments:
+                query = UsersModel.paginate(query, arguments[_PAGINATE_ACTION])
             data = query_to_json(query)
             return jsonify(data)
 
@@ -82,8 +84,7 @@ class UsersApi(MethodView):
             elif key.lower() == _SEARCH_ACTION:
                 arguments[_SEARCH_ACTION] = value
             elif key.lower == _PAGINATE_ACTION:
-                # todo implement
-                pass
+                arguments[_PAGINATE_ACTION] = value
             else:
                 if _FILTER_ACTION not in arguments:
                     arguments[_FILTER_ACTION] = {}
