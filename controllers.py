@@ -16,7 +16,7 @@ _FILTER_ACTION = 'filter'
 _PAGINATE_ACTION = 'page'
 
 
-# todo set pagination
+# todo test pagination
 # todo implement error handlers and control possible filter_users exception when key not found
 # todo reset password and forgot password system
 # todo internationzalization
