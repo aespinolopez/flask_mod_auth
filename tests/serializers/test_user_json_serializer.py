@@ -18,9 +18,8 @@ def test_serialize_domain_user():
     expected_json = """
     {{
         "username": "{username}",
-        "email": "{email}",
-        "password": "{password}"
+        "email": "{email}"
     }}
-    """.format(username=USERNAME_VALUE, email=EMAIL_VALUE, password=PASSWORD_VALUE)
+    """.format(username=USERNAME_VALUE, email=EMAIL_VALUE)
 
     assert json.loads(json.dumps(user, cls=UserJsonSerializer)) == json.loads(expected_json)

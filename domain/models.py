@@ -1,5 +1,7 @@
+from app.mod_auth.domain.domain_model import DomainModel
 
-class User:
+
+class User(DomainModel):
 
     def __init__(self, username, email, password):
         self.username = username

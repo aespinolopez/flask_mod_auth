@@ -9,8 +9,7 @@ class UserJsonSerializer(json.JSONEncoder):
         try:
             to_serialize = {
                 'username': user.username,
-                'email': user.email,
-                'password': user.password
+                'email': user.email
             }
         except AttributeError:
             return super().default(user)

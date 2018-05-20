@@ -1,18 +1,12 @@
-from app.mod_auth.use_cases.response_objects import ResponseSuccess, ResponseFailure
+from app.mod_auth.use_cases.use_case import UseCase
+from app.mod_auth.use_cases.response_objects import ResponseSuccess
 
 
-class ListUsersUseCase:
+class ListUsersUseCase(UseCase):
 
     def __init__(self, repository):
         self.repository = repository
 
-    def execute(self, request_object):
-        if not request_object:
-            return ResponseFailure.build_from_invalid_request_object(request_object)
-
-        try:
-            users = self.repository.list(filters=request_object.filters)
-        except Exception as err:
-            return ResponseFailure.build_system_error("{}: {}".format(err.__class__.__name__, "{}".format(err)))
-
+    def process_request(self, request_object):
+        users = self.repository.list(filters=request_object.filters)
         return ResponseSuccess(users)
